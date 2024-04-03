@@ -1,173 +1,163 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
-namespace TicketingConsoleApp
+namespace DifferentTicketingConsoleApp
 {
-    public enum SeatType
+    
+    enum SeatLabel { A, B, C, D }
+
+  
+    class Chair
     {
-        Window,
-        Aisle
-    }
+        public bool IsBooked { get; set; }
+        public Passenger Occupant { get; set; }
+        public SeatLabel Label { get; }
+        public int RowNumber { get; }
 
-    public class Seat
-    {
-        public bool IsOccupied { get; private set; }
-        public string PassengerName { get; private set; }
-
-        public Seat()
+        public Chair(int rowNumber, SeatLabel label)
         {
-            IsOccupied = false;
-            PassengerName = "";
-        }
-
-        public void OccupySeat(string passengerName)
-        {
-            IsOccupied = true;
-            PassengerName = passengerName;
-        }
-
-        public void VacateSeat()
-        {
-            IsOccupied = false;
-            PassengerName = "";
-        }
-
-        public override string ToString()
-        {
-            if (IsOccupied)
-                return PassengerName;
-            else
-                return "Available";
+            RowNumber = rowNumber;
+            Label = label;
         }
     }
 
-    public class Row
+   
+    class Traveler
     {
-        public List<Seat> Seats { get; private set; }
-
-        public Row()
-        {
-            Seats = new List<Seat>();
-            for (int i = 0; i < 4; i++)
-            {
-                Seats.Add(new Seat());
-            }
-        }
-
-        public bool IsRowFullyOccupied()
-        {
-            foreach (var seat in Seats)
-            {
-                if (!seat.IsOccupied)
-                    return false;
-            }
-            return true;
-        }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public SeatLabel PreferredSeat { get; set; }
+        public Chair ReservedSeat { get; set; }
     }
 
-    public class Airplane
+    class MyApp
     {
-        private List<Row> rows;
+        static Chair[,] seatingLayout = new Chair[12, 4];
+        static List<Traveler> travelers = new List<Traveler>();
 
-        public Airplane()
-        {
-            rows = new List<Row>();
-            for (int i = 0; i < 12; i++)
-            {
-                rows.Add(new Row());
-            }
-        }
-
-        public bool BookSeat(string passengerName, SeatType preference = SeatType.Window)
-        {
-            foreach (var row in rows)
-            {
-                foreach (var seat in row.Seats)
-                {
-                    if (!seat.IsOccupied && (preference == SeatType.Window && (seat == row.Seats[0] || seat == row.Seats[3]) || preference == SeatType.Aisle && (seat == row.Seats[1] || seat == row.Seats[2])))
-                    {
-                        seat.OccupySeat(passengerName);
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public void ShowSeatingArrangement()
-        {
-            for (int i = 0; i < 12; i++)
-            {
-                Console.WriteLine($"Row {i + 1}: {rows[i].Seats[0]} {rows[i].Seats[1]} {rows[i].Seats[2]} {rows[i].Seats[3]}");
-            }
-        }
-
-        public bool IsAirplaneFullyOccupied()
-        {
-            foreach (var row in rows)
-            {
-                if (!row.IsRowFullyOccupied())
-                    return false;
-            }
-            return true;
-        }
-    }
-
-    class Program
-    {
         static void Main(string[] args)
         {
-            Airplane airplane = new Airplane();
-            int choice;
+            InitializeSeatingLayout();
 
-            do
+            while (true)
             {
-                Console.WriteLine("\n1. Book a ticket");
-                Console.WriteLine("2. View seating arrangement");
-                Console.WriteLine("3. Exit");
+                Console.WriteLine("Please enter 1 to book a ticket.");
+                Console.WriteLine("Please enter 2 to see seating chart.");
+                Console.WriteLine("Please enter 3 to exit the application.");
 
-                int.TryParse(Console.ReadLine(), out choice);
+                string choice = Console.ReadLine();
 
                 switch (choice)
                 {
-                    case 1:
-                        BookTicket(airplane);
+                    case "1":
+                        BookTicket();
                         break;
-                    case 2:
-                        airplane.ShowSeatingArrangement();
+                    case "2":
+                        DisplaySeatingChart();
                         break;
-                    case 3:
-                        Console.WriteLine("Exiting the application...");
+                    case "3":
+                        Environment.Exit(0);
                         break;
                     default:
                         Console.WriteLine("Invalid choice. Please try again.");
                         break;
                 }
-            } while (choice != 3);
+            }
         }
 
-        static void BookTicket(Airplane airplane)
+        static void InitializeSeatingLayout()
         {
-            Console.WriteLine("Enter passenger's name:");
-            string passengerName = Console.ReadLine();
-
-            Console.WriteLine("Enter 1 for Window seat preference, 2 for Aisle seat preference:");
-            int preferenceInput;
-            if (!int.TryParse(Console.ReadLine(), out preferenceInput) || (preferenceInput != 1 && preferenceInput != 2))
+            for (int row = 0; row < 12; row++)
             {
-                Console.WriteLine("Invalid preference. Defaulting to Window.");
-                preferenceInput = 1;
+                for (int seat = 0; seat < 4; seat++)
+                {
+                    seatingLayout[row, seat] = new Chair(row + 1, (SeatLabel)seat);
+                }
+            }
+        }
+
+        static void BookTicket()
+        {
+            Console.WriteLine("Please enter the traveler's first name:");
+            string firstName = Console.ReadLine();
+
+            Console.WriteLine("Please enter the traveler's last name:");
+            string lastName = Console.ReadLine();
+
+            Console.WriteLine("Please enter 1 for a Window seat preference, 2 for an Aisle seat preference, or hit enter to pick the first available seat:");
+            string preferenceInput = Console.ReadLine();
+
+            SeatLabel preference = SeatLabel.A;
+            if (!string.IsNullOrEmpty(preferenceInput))
+            {
+                preference = (SeatLabel)(int.Parse(preferenceInput) - 1);
             }
 
-            SeatType preference = (preferenceInput == 1) ? SeatType.Window : SeatType.Aisle;
+            
+            Chair availableSeat = FindAvailableChair(preference);
 
-            if (airplane.BookSeat(passengerName, preference))
+            if (availableSeat != null)
             {
-                Console.WriteLine("Ticket booked successfully!");
+                Traveler traveler = new Traveler
+                {
+                    FirstName = firstName,
+                    LastName = lastName,
+                    PreferredSeat = preference,
+                    ReservedSeat = availableSeat
+                };
+
+                availableSeat.IsBooked = true;
+                availableSeat.Occupant = traveler;
+
+                travelers.Add(traveler);
+
+                Console.WriteLine($"The seat located in {availableSeat.RowNumber} {availableSeat.Label} has been booked.");
             }
             else
             {
-                Console.WriteLine("Sorry, the airplane is fully occupied.");
+                Console.WriteLine("Sorry, the plane is fully booked.");
+            }
+        }
+
+        static Chair FindAvailableChair(SeatLabel preference)
+        {
+            foreach (Chair chair in seatingLayout)
+            {
+                if (!chair.IsBooked)
+                {
+                    if (preference == SeatLabel.A && (chair.Label == SeatLabel.A || chair.Label == SeatLabel.D))
+                    {
+                        return chair;
+                    }
+                    else if (preference == SeatLabel.B && (chair.Label == SeatLabel.B || chair.Label == SeatLabel.C))
+                    {
+                        return chair;
+                    }
+                    else if (preference == SeatLabel.C || preference == SeatLabel.D)
+                    {
+                        return chair;
+                    }
+                }
+            }
+            return null;
+        }
+
+        static void DisplaySeatingChart()
+        {
+            for (int row = 0; row < 12; row++)
+            {
+                for (int seat = 0; seat < 4; seat++)
+                {
+                    if (seatingLayout[row, seat].IsBooked)
+                    {
+                        Console.Write($"{seatingLayout[row, seat].Occupant.FirstName.Substring(0, 1)}{seatingLayout[row, seat].Occupant.LastName.Substring(0, 1)} ");
+                    }
+                    else
+                    {
+                        Console.Write($"- ");
+                    }
+                }
+                Console.WriteLine();
             }
         }
     }
